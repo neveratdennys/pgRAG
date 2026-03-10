@@ -1,0 +1,44 @@
+flowchart TD
+    %% pgRAG Current Design (with optional reranker extension)
+
+    subgraph A["A) Data Ingest / Update Path"]
+        S["New Data Sources<br/>(txt / html / md / etc.)"]
+        I["Ingest CLI<br/>python -m pgrag ingest ..."]
+        P["Parse + Normalize + Chunk"]
+        E["Embedding Provider<br/>Default: Ollama qwen3-embedding:4b"]
+        DB[("PostgreSQL + pgvector<br/>chunks table<br/>embedding: halfvec(n)<br/>FTS index + HNSW index")]
+        S --> I --> P --> E --> DB
+    end
+
+    subgraph B["B) Retrieval + Top-K + Context Build"]
+        UQ["User Query"]
+        QE["Query Embedding<br/>(same embedding model/provider)"]
+        VS["Vector Search<br/>top_k_vector"]
+        LS["Lexical Search (FTS)<br/>top_k_lexical"]
+        HF["Hybrid Fusion<br/>(RRF / weighted / vector_only / lexical_only)"]
+        RR["Optional Semantic Reranker<br/>(LLM reranker model)<br/>top_n -> keep_n"]
+        TK["Final Top-K Selection<br/>for context"]
+        CB["Context Builder<br/>(chunk caps, clipping, citations)"]
+
+        UQ --> QE
+        QE --> VS
+        UQ --> LS
+        VS --> HF
+        LS --> HF
+        HF --> RR
+        HF --> TK
+        RR --> TK
+        TK --> CB
+    end
+
+    subgraph C["C) LLM Integration + Context-Aware Chat"]
+        LLM["Generation LLM<br/>(e.g. Foundry GPT model)"]
+        RESP["Grounded Answer<br/>with chunk references"]
+        HIST["Chat History"]
+    end
+
+    DB --> VS
+    DB --> LS
+    CB --> LLM --> RESP
+    HIST --> LLM
+    RESP --> HIST

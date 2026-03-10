@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgrag-cli"
+version = "0.1.0"
+description = "Prototype pgvector-backed RAG CLI with Azure AI Foundry model support"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0.1",
+  "requests>=2.32.0",
+  "psycopg[binary]>=3.2.0",
+]
+
+[project.scripts]
+pgrag-cli = "pgrag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pgrag*"]
