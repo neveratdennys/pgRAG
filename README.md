@@ -36,7 +36,7 @@ pgvector-backed RAG prototype with hybrid retrieval, optional semantic reranking
 - `pgrag/cli.py`: CLI commands and runtime wiring.
 - `config.local.example.yaml`: full config template including retrieval profiles.
 
-## WSL Setup (Ubuntu)
+## Ubuntu Setup
 
 Install PostgreSQL and pgvector:
 
@@ -134,60 +134,6 @@ Interactive chat:
 python -m pgrag chat --profile high_precision --debug-retrieval
 ```
 
-## Ollama Embedding Demo (Direct API)
-
-Use these commands to demo that local Ollama is serving `qwen3-embedding:4b` embeddings directly, outside pgRAG.
-
-Basic request:
-
-```bash
-curl -s http://127.0.0.1:11434/api/embed \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "qwen3-embedding:4b",
-    "input": "Embed this sentence for semantic search demo."
-  }'
-```
-
-Show only embedding vector length (quick sanity check):
-
-```bash
-curl -s http://127.0.0.1:11434/api/embed \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "qwen3-embedding:4b",
-    "input": "Embed this sentence for semantic search demo."
-  }' | python -c "import sys, json; d=json.load(sys.stdin); print(len(d['embeddings'][0]))"
-```
-
-Compare two texts and print cosine similarity:
-
-```bash
-python - <<'PY'
-import math
-import requests
-
-URL = "http://127.0.0.1:11434/api/embed"
-MODEL = "qwen3-embedding:4b"
-texts = [
-    "What is the SDLC process overview?",
-    "Explain lifecycle phases in software delivery.",
-]
-
-vecs = []
-for t in texts:
-    r = requests.post(URL, json={"model": MODEL, "input": t}, timeout=120)
-    r.raise_for_status()
-    vecs.append(r.json()["embeddings"][0])
-
-dot = sum(a*b for a, b in zip(vecs[0], vecs[1]))
-n1 = math.sqrt(sum(a*a for a in vecs[0]))
-n2 = math.sqrt(sum(b*b for b in vecs[1]))
-print("dimensions:", len(vecs[0]))
-print("cosine_similarity:", dot / (n1 * n2))
-PY
-```
-
 ## Retrieval Profiles and Tuning
 
 `config.local.yaml` supports named profiles under `retrieval.profiles`. Each profile includes:
@@ -224,26 +170,3 @@ Use `database.embedding_type: halfvec` (default in current config) to support 20
 - `vector_index_mode=exact_scan`
 
 The CLI output prints the selected mode after `init-db`.
-
-## Preliminary Validation (Completed)
-
-A local preliminary run was completed with current sample docs:
-
-- DB schema init: success.
-- Sample docs ingested: `3` files, `4` chunks.
-- Hybrid retrieval sanity check: success with relevant top result from `udp-stencil-component-library.txt`.
-- Retrieval trace output includes per-stage timings and candidate counts.
-- Ollama embedding provider path validated (`qwen3-embedding:4b`, 2560 dims).
-
-Note:
-
-- Embeddings default to Ollama provider from `config.local.yaml`.
-- Use `--use-local-embeddings` only when you explicitly want deterministic local-hash fallback.
-- `ask`/`chat` require valid Foundry model credentials in `config.local.yaml`.
-- `retrieve` works without generation credentials and is recommended for early tuning.
-
-## Security
-
-- `config.local.yaml` is ignored by git.
-- `docs/` is ignored by git (prototype local corpus).
-- Never commit API keys.
